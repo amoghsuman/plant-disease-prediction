@@ -1,6 +1,5 @@
 streamlit
 tensorflow
 keras
+pillow
 numpy
-opencv-python-headless
-pandas

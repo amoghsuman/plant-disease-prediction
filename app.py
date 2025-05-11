@@ -3,39 +3,40 @@ import streamlit as st
 import cv2
 from keras.models import load_model
 
-# Load the model once at startup
+# Load the model once
 @st.cache_resource
-def load_trained_model():
+def load_model_cached():
     return load_model('plant_disease.h5')
 
-model = load_trained_model()
+model = load_model_cached()
 
-# Class labels
+# Class names
 CLASS_NAMES = ['Corn-Common_rust', 'Potato-Early_blight', 'Tomato-Bacterial_spot']
 
-# Streamlit UI
 st.title("🌿 Plant Disease Detection")
-st.markdown("Upload an image of a plant leaf to detect possible diseases.")
+st.markdown("Upload a leaf image to predict the disease.")
 
-# Upload the image
-plant_image = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+# Upload image
+uploaded_file = st.file_uploader("Upload an image...", type=["jpg", "jpeg", "png"])
 
-# Predict if both image is uploaded and button is clicked
-if plant_image is not None:
-    # Convert the image to OpenCV format
-    file_bytes = np.asarray(bytearray(plant_image.read()), dtype=np.uint8)
-    opencv_image = cv2.imdecode(file_bytes, 1)
+if uploaded_file is not None:
+    # Immediately read and process the image (do not store across reruns)
+    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+    image = cv2.imdecode(file_bytes, 1)
 
-    st.image(opencv_image, channels="BGR", caption="Uploaded Leaf Image", use_column_width=True)
+    if image is not None:
+        st.image(image, channels="BGR", caption="Uploaded Image", use_column_width=True)
 
-    # Resize and preprocess
-    opencv_image = cv2.resize(opencv_image, (256, 256))
-    opencv_image = opencv_image.astype('float32') / 255.0
-    opencv_image = np.expand_dims(opencv_image, axis=0)
+        # Resize and preprocess
+        image = cv2.resize(image, (256, 256))
+        image = image.astype('float32') / 255.0
+        image = np.expand_dims(image, axis=0)
 
-    # Prediction
-    Y_pred = model.predict(opencv_image)
-    result = CLASS_NAMES[np.argmax(Y_pred)]
+        # Predict
+        prediction = model.predict(image)
+        result = CLASS_NAMES[np.argmax(prediction)]
 
-    crop, disease = result.split('-')
-    st.success(f"🟢 Prediction: This is a **{crop}** leaf with **{disease.replace('_', ' ')}**.")
+        crop, disease = result.split('-')
+        st.success(f"🟢 This is a **{crop}** leaf with **{disease.replace('_', ' ')}**.")
+    else:
+        st.error("Failed to process the image. Please upload a valid JPG/PNG file.")

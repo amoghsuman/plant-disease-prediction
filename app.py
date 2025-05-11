@@ -43,7 +43,7 @@ if submit:
                 st.error("⚠️ Unable to process image. Please upload a valid image file.")
             else:
                 # Show image
-                st.image(opencv_image, channels="BGR", caption="Uploaded Leaf Image", use_column_width=True)
+                st.image(opencv_image, channels="BGR", caption="Uploaded Leaf Image", use_container_width=True)
 
                 # Preprocess for model
                 opencv_image = cv2.resize(opencv_image, (256, 256))

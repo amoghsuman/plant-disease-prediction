@@ -16,7 +16,7 @@ st.title("Plant Disease Detection")
 st.markdown("Upload an image of the plant leaf")
 
 #Uploading the dog image
-plant_image = st.file_uploader("Choose an image...", type="jpg")
+plant_image = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png", "JPG", "JPEG", "PNG"])
 submit = st.button('Predict')
 #On predict button click
 if submit:

@@ -1,39 +1,63 @@
-import streamlit as st
-from PIL import Image
+# Library imports
 import numpy as np
+import streamlit as st
+import cv2
+import os
 from keras.models import load_model
 
-# Load model (cached to avoid reloading on every rerun)
+# Load the model (cached for performance)
 @st.cache_resource
 def load_model_cached():
     return load_model("plant_disease.h5")
 
 model = load_model_cached()
 
-# Class labels
+# Name of Classes
 CLASS_NAMES = ['Corn-Common_rust', 'Potato-Early_blight', 'Tomato-Bacterial_spot']
 
-# Streamlit UI
-st.title("🌿 Plant Disease Identification")
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+# App title
+st.title("🌿 Plant Disease Detection")
+st.markdown("Upload an image of a plant leaf to detect possible diseases.")
 
-if uploaded_file is not None:
-    try:
-        # Load and display image
-        img = Image.open(uploaded_file).convert("RGB")
-        st.image(img, caption="Uploaded Leaf Image", use_column_width=True)
+# Upload image (no 'type=' to avoid StreamlitAPIException)
+plant_image = st.file_uploader("Upload a JPG or PNG image")
 
-        # Preprocess for model
-        img_resized = img.resize((256, 256))
-        img_array = np.array(img_resized) / 255.0  # Normalize
-        img_array = np.expand_dims(img_array, axis=0)  # Shape: (1, 256, 256, 3)
+# Predict button
+submit = st.button("Predict")
 
-        # Make prediction
-        prediction = model.predict(img_array)
-        result = CLASS_NAMES[np.argmax(prediction)]
+# On predict click
+if submit:
+    if plant_image is None:
+        st.error("⚠️ Please upload an image before clicking Predict.")
+    else:
+        # Validate extension manually (case-insensitive)
+        ext = os.path.splitext(plant_image.name)[-1].lower()
+        if ext not in [".jpg", ".jpeg", ".png"]:
+            st.error(f"❌ Invalid file extension: `{ext}`. Please upload a JPG or PNG file.")
+        else:
+            # Read and decode image
+            file_bytes = np.asarray(bytearray(plant_image.read()), dtype=np.uint8)
+            opencv_image = cv2.imdecode(file_bytes, 1)
 
-        crop, disease = result.split("-")
-        st.success(f"🟢 Prediction: **{crop}** leaf with **{disease.replace('_', ' ')}**")
-    
-    except Exception as e:
-        st.error(f"❌ Error processing image: {e}")
+            if opencv_image is None:
+                st.error("⚠️ Unable to process image. Please upload a valid image file.")
+            else:
+                # Show image
+                st.image(opencv_image, channels="BGR", caption="Uploaded Leaf Image", use_column_width=True)
+
+                # Preprocess for model
+                opencv_image = cv2.resize(opencv_image, (256, 256))
+                opencv_image = opencv_image.astype("float32") / 255.0
+                opencv_image = np.expand_dims(opencv_image, axis=0)
+
+                # Predict
+                prediction = model.predict(opencv_image)
+                predicted_label = CLASS_NAMES[np.argmax(prediction)]
+
+                # Parse label
+                crop, disease = predicted_label.split("-")
+                confidence = round(100 * np.max(prediction), 2)
+
+                # Display result
+                st.success(f"🟢 This is a **{crop}** leaf with **{disease.replace('_', ' ')}**.")
+                st.info(f"🤖 Model Confidence: **{confidence}%**")
